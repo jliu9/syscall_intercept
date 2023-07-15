@@ -1077,6 +1077,7 @@ static bool fsp_syscall_handle(long syscall_number,
 		const long args[6],
 		long *result)
 {
+    errno = 0;
 #ifdef SINGLE_OP_TIMER
 	uint64_t single = 0;
 	if ((g_fsp_intercepted + 1) % 1 == 0) {
@@ -1090,6 +1091,7 @@ static bool fsp_syscall_handle(long syscall_number,
 	if (ret_val >= 0) {      \
 		*result = ret_val;   \
 	} else {                 \
+        if (ret_val != -1) errno = -ret_val; \
 		*result = -errno;     \
 	}                        \
 	handled = true;
