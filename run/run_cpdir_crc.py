@@ -135,7 +135,8 @@ with open(f"{output_dir}/{output_file}.fsp", "w") as fsp_out:
 os.environ["SYSCALL_LOG_PATH"] = f"{output_dir}/{output_file}-app.timer"
 with open(f"{output_dir}/{output_file}.app", "w") as app_out:
     # p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r FSPs FSPd", shell=True, stdout=app_out, stderr=app_out)
-    p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r FSPs FSPd", shell=True, stdout=app_out, stderr=app_out)
+    #p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r FSPs FSPd", shell=True, stdout=app_out, stderr=app_out)
+    p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r cptest FSPs", shell=True, stdout=app_out, stderr=app_out)
 
 p.wait()
 
