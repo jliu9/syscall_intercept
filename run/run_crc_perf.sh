@@ -14,8 +14,10 @@ mkdir -p $DIR
 ARGS=""
 
 IS_FAULT=0
-for ITER in 1 2 3 4 5
+for ITER in 1 2 3 4 5 6 7 8 9 10
 do
+    sudo rm -rf /dev/shm/*
+    sleep 10
     sudo -E python run_cpdir_crc.py $DIR "$case_name$ITER" $IS_FAULT
     ARGS="$ARGS $DIR/$case_name$ITER-app.timer"
 done
