@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # Define the workspace directory
-WORKSPACE_DIR="${CFS_ROOT_DIR}/cfs/build"
+WORKSPACE_DIR="${CFS_ROOT_DIR}/cfs"
 
 CUR_DIR=$(pwd)
 
@@ -18,8 +18,11 @@ declare -A combinations=(
 for flags in "${!combinations[@]}"; do
     cd $WORKSPACE_DIR
     echo $flags
-    cmake "$flags" ../
+    rm -rf build
+    mkdir -p build
     rm -rf ~/.cache
+    cd build
+    cmake $flags -DCMAKE_BUILD_TYPE=Release -DCFS_DISK_LAYOUT_LEVELDB=ON -DBUILD_TESTS=OFF ../
     make -j20
     cd $CUR_DIR
     # Run the script with the combination name and the combination name with "BK" appended
