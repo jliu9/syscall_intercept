@@ -8,10 +8,10 @@ CUR_DIR=$(pwd)
 
 # Array of combinations and corresponding names
 declare -A combinations=(
-    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF"]="Full"
+    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF"]="Baseline"
     ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=OFF"]="Crc"
     ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON"]="OpLog"
-    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=ON"]="CrcOpLog"
+    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=ON"]="Full"
 )
 
 # Loop through the combinations and run the script
