@@ -32,6 +32,11 @@
 cmake_minimum_required(VERSION 3.15)
 project(syscall_intercept C ASM)
 
+# Add the DEBUG definition for Debug builds
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    add_definitions(-DDEBUG)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)

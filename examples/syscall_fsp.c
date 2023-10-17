@@ -53,6 +53,7 @@
 #include <time.h>
 
 #include "fsapi.h"
+#include <linux/aio_abi.h> 
 
 
 #define FSP_SHIM_DBG_FLAG 0
@@ -75,6 +76,14 @@ int log_fd;
 
 static char buffer[0x2000000];
 static size_t buffer_offset;
+
+#ifdef DEBUG
+#define DEBUG_PRINT(...) do{ fprintf( stderr, __VA_ARGS__ ); } while( false )
+#else
+#define DEBUG_PRINT(...) do{ } while ( false )
+#endif
+
+#define SIZE 1024 * 1024 / 4
 
 #define FS_SHM_KEY_BASE 20190301
 #define FS_MAX_NUM_WORKER 20
@@ -197,7 +206,11 @@ static int get_fsp_path_mode_gt(const char *path, mode_t *mode) {
 }
 
 static inline int check_if_fsp_path(const char *path) {
-  return strncmp(path, fsp_dir_prefix, FSP_PATH_PREFIX_LEN) == 0;
+  	// fprintf(stderr, "filename: %s\n", path); 
+	// fprintf(stderr, "prefix: %s\n", fsp_dir_prefix); 
+	int rc = strncmp(path, fsp_dir_prefix, FSP_PATH_PREFIX_LEN) == 0;
+	// fprintf(stderr, "compare: %s\n", fsp_dir_prefix); 
+	return rc; 
 }
 
 #define FSP_SORT_FNAME_IN_IDX (0)
@@ -1126,10 +1139,39 @@ static void regulate_stat_result(struct stat *stat_buf, bool is_fsp) {
 	}
 }
 
+// write 
+ssize_t do_fs_alloc_w(int fd, void* buf, size_t count) {
+	ssize_t saved = count; 
+    ssize_t total_written = 0;
+	void* tmp_ptr = buf; 
+
+    while(count > 0) {
+        size_t current_write_size = (count > SIZE) ? SIZE : count;
+        void *cur_buf = fs_malloc(current_write_size);
+        assert(cur_buf != NULL);
+        memcpy(cur_buf, tmp_ptr, current_write_size);
+        ssize_t ret = fs_allocated_write(fd, cur_buf, current_write_size);
+        if (ret > 0) {
+            tmp_ptr += ret;
+            total_written += ret;
+        } else {
+            fs_free(cur_buf);
+            break;
+        }
+        count -= current_write_size;
+		fs_free(cur_buf);
+    }
+	assert(total_written == saved); 
+    return total_written;
+}
+
+
 static bool fsp_syscall_handle(long syscall_number,
 		const long args[6],
 		long *result)
 {
+	// assert(args[2] != 8); 
+	
 #ifdef SINGLE_OP_TIMER
 	uint64_t single = 0;
 	if ((g_fsp_intercepted + 1) % 1 == 0) {
@@ -1137,6 +1179,7 @@ static bool fsp_syscall_handle(long syscall_number,
 	}
 #endif
 
+	// fprintf(stderr, "syscall num: %d\n", syscall_number);
 
 // We want these two updates to be always paired
 #define SET_RETURN_VAL(ret_val) \
@@ -1174,13 +1217,15 @@ static bool fsp_syscall_handle(long syscall_number,
 		errno = 0;
 		check_open_flag_fd_type(args[open_flag_pos], &cur_fd_type);
 		if (check_if_fsp_path(cur_path)) {
+				// DEBUG_PRINT("syscall: open file: %s\n", cur_path); 
                 //   fprintf(stderr,
                 //       "openat cur_path:%s flag:%d is_fsp_path:%d errno:%d\n",
                 //       cur_path, (int)args[open_flag_pos],
                 //       check_if_fsp_path(cur_path), errno);
-                  cur_path = TO_NEW_PATH(cur_path);
+				  cur_path = TO_NEW_PATH(cur_path);
                   int fd = fd = fs_open(cur_path, (int)args[open_flag_pos],
                                         (mode_t)args[open_mode_pos]);
+				//   fprintf(stderr, "fd: %d\n", fd); 
                   if (fd >= 0) {
                     int idx = add_fsp_fd(fd, (int)args[open_flag_pos]);
                     assert(idx >= 0);
@@ -1285,6 +1330,37 @@ static bool fsp_syscall_handle(long syscall_number,
 		}
 	}
 
+	if (syscall_number == SYS_io_setup){
+		SET_RETURN_VAL(0); 
+	}
+	if (syscall_number == SYS_io_submit){
+		int submitted = 0; 
+		long nr = args[1]; 
+		struct iocb **iocbpp = (struct iocb **) args[2]; 
+		for (int i = 0; i < nr; i++){
+			struct iocb *iocb_ptr = iocbpp[i]; 
+			int aio_fd = iocb_ptr->aio_fildes;
+			// DEBUG_PRINT("syscall: request malloc size: %ld\n", iocb_ptr->aio_nbytes); 
+			// will get dealloc in io_event
+			void *cur_buf = fs_malloc(iocb_ptr->aio_nbytes); 
+			assert(cur_buf != NULL); 
+			if(is_fsp_fd(aio_fd)){
+				int rc = fs_aio_submit(iocb_ptr, cur_buf); 
+				if (rc == 0) submitted += 1; 
+			}
+		}
+		SET_RETURN_VAL(submitted); 
+	}
+	if (syscall_number == SYS_io_getevents){
+		long min_nr = args[1];
+		long nr = args[2]; 
+		struct io_event *events = args[3]; 
+		struct timespec *timeout = args[4]; 
+		int numEvents = fs_aio_getevents(min_nr, nr, events, timeout); 
+		// DEBUG_PRINT("syscall: io getevent end\n"); 
+		SET_RETURN_VAL(numEvents);
+	}
+
     if (syscall_number == SYS_utime) {
 		if (check_if_fsp_path(cur_path)) {
 			cur_path = TO_NEW_PATH(cur_path);
@@ -1339,30 +1415,122 @@ static bool fsp_syscall_handle(long syscall_number,
 		SET_RETURN_VAL(truncate_length);
 	}
 
-#define DO_FS_ALLOC_R \
-	size_t count = args[2]; \
-	void *cur_buf = fs_malloc(count); \
-	assert (cur_buf != NULL); \
-	ssize_t ret = fs_allocated_read(cur_fd, cur_buf, count); \
-	if (ret >= 0) { \
-		memcpy((void*)args[1], cur_buf, ret); \
-	} \
-	fs_free(cur_buf);
+/*
+When malloc size > 2M, fs_malloc return null ptr, break
+the larger read into some smaller reads
+*/
 
+// #define DO_FS_ALLOC_R \
+// 	size_t count = args[2]; \
+// 	ssize_t tmp = 1024 * 1024; \
+// 	void *cur_buf = fs_malloc(tmp); \
+// 	DEBUG_PRINT("syscall: malloc read cur_buf: %d\n", cur_buf == NULL); \
+// 	assert (cur_buf != NULL); \
+// 	DEBUG_PRINT("syscall: enter fs_read\n"); \
+// 	ssize_t ret = fs_allocated_read(cur_fd, cur_buf, tmp); \
+// 	DEBUG_PRINT("syscall: fs_read out\n"); \
+// 	if (ret >= 0) { \
+// 		memcpy((void*)args[1], cur_buf, ret); \
+// 	} \
+// 	fs_free(cur_buf);
+// 	DEBUG_PRINT("syscall: read complete\n"); \
+
+#define DO_FS_ALLOC_R \
+    size_t count = args[2]; \
+    ssize_t total = 0; \
+    void* tmp_ptr = (void*)args[1]; \
+    while(count > 0) { \
+        size_t current_read_size = (count > SIZE) ? SIZE : count; \
+        void *cur_buf = fs_malloc(current_read_size); \
+        assert (cur_buf != NULL); \
+        ssize_t ret = fs_allocated_read(cur_fd, cur_buf, current_read_size); \
+        if (ret > 0) { \
+            memcpy(tmp_ptr, cur_buf, ret); \
+            tmp_ptr += ret; \
+            total += ret; \
+        } \
+		else{ \ 
+			fs_free(cur_buf); \
+			break; \
+		} \
+        count -= current_read_size; \
+		fs_free(cur_buf); \
+    } \
+    ssize_t ret = total; \
+	// assert(args[2] == ret); \
+
+	/*
+	ext4 lseek support set offset beyond EOF and DiskANN code use this 
+	feature, which will cause ApparateFS return err. So I first check size 
+	of the file, if size is smaller than offset than first write some
+	zero bytes up to the offset
+	*/
 	if (syscall_number == SYS_lseek) {
 		if (is_fsp_fd(cur_fd)) {
+			// DEBUG_PRINT("syscall: receive lseek()\n"); 
+			struct stat stat_buf;
+			int ret_stat = fs_fstat(cur_fd, &stat_buf); 
+			ssize_t st_size = stat_buf.st_size; 	
+			// DEBUG_PRINT("syscall: seek offset: %ld\n", args[1]); 
+			// DEBUG_PRINT("syscall: actual file size: %ld\n", st_size); 
+			if(st_size < args[1]){
+				ssize_t write_sz = args[1] - st_size; 
+				void *write_buf = fs_malloc(write_sz);
+				assert (write_buf != NULL);
+				memset(write_buf, 0, write_sz);
+				// DEBUG_PRINT("syscall: before seek request write size: %ld\n", write_sz); 
+				ssize_t ret_write = fs_allocated_pwrite(cur_fd, write_buf, write_sz, st_size); 
+				fs_free(write_buf); 
+				// DEBUG_PRINT("syscall: before seek actual write size: %ld\n", ret_write); 
+				// ret_stat = fs_fstat(cur_fd, &stat_buf); 
+				// st_size = stat_buf.st_size; 	
+				// DEBUG_PRINT("syscall: after enlarge file size: %ld\n", st_size);
+			}
+
 			int ret = fs_lseek(cur_fd, args[1], args[2]);
 			SET_RETURN_VAL(ret);
 		}
 	}
 
+/*
+When malloc size > 2M, fs_malloc return null ptr, break
+the larger read into some smaller reads
+*/
+
+// #define DO_FS_ALLOC_W \
+// 	size_t count = args[2]; \
+// 	fprintf(stderr, "total write request: %d\n", count); \
+// 	void *cur_buf = fs_malloc(count); \
+// 	assert (cur_buf != NULL); \
+// 	memcpy(cur_buf, (void*)args[1], count); \
+// 	ssize_t ret = fs_allocated_write(cur_fd, cur_buf, count); \
+// 	fprintf(stderr, "return write size: %d\n", ret); \
+// 	fs_free(cur_buf);
+
 #define DO_FS_ALLOC_W \
-	size_t count = args[2]; \
-	void *cur_buf = fs_malloc(count); \
-	assert (cur_buf != NULL); \
-	memcpy(cur_buf, (void*)args[1], count); \
-	ssize_t ret = fs_allocated_write(cur_fd, cur_buf, count); \
-	fs_free(cur_buf);
+    size_t count = args[2]; \
+    ssize_t  total_written = 0; \
+    void* tmp_ptr = (void*)args[1]; \
+    while(count > 0) {; \
+        size_t current_write_size = (count > SIZE) ? SIZE : count; \
+        void *cur_buf = fs_malloc(current_write_size); \
+        assert (cur_buf != NULL); \
+        memcpy(cur_buf, tmp_ptr, current_write_size); \
+        ssize_t ret = fs_allocated_write(cur_fd, cur_buf, current_write_size); \
+        if (ret > 0) { \
+            tmp_ptr += ret; \
+            total_written += ret; \
+        } else { \
+            /* Error in writing, break out of loop */ \
+            fs_free(cur_buf); \
+            break; \
+        } \
+        count -= current_write_size; \
+		fs_free(cur_buf); \
+    } \
+    ssize_t ret = total_written; \
+	// assert(args[2] == ret); \ 
+
 
 	if (syscall_number == SYS_read) {
 		if (is_fsp_fd(cur_fd)) {
@@ -1374,7 +1542,18 @@ static bool fsp_syscall_handle(long syscall_number,
 			SET_RETURN_VAL(ret);
 		}
 	}
+	// if (syscall_number == SYS_pread64){
+	// 	if(is_fsp_fd(cur_fd)){
+	// 		ssize_t pread_ret = fs_pread(args[0], args[1], args[2], args[3]); 
+	// 		if (pread_ret <= 0) {
+    //             // fprintf(stderr, "alloc_read fd%d ret:%ld errno:%d\n", cur_fd, ret, errno);
+    //             // errno = -ret;
+    //         }
+	// 		SET_RETURN_VAL(pread_ret);
+	// 	}
+	// }
 	if (syscall_number == SYS_write) {
+		
 #ifdef RUN_GNU_SORT
 		if (check_if_fsp_sort_outfd_dup_target(cur_fd)) {
 			cur_fd = g_fsp_sort_ctx.output_fd;
@@ -1387,6 +1566,18 @@ static bool fsp_syscall_handle(long syscall_number,
                 // errno = -ret;
             }
 			SET_RETURN_VAL(ret);
+		}
+	}
+
+	if (syscall_number == SYS_writev){
+		if (is_fsp_fd(cur_fd)){
+			struct iovec *iov = args[1]; 
+			int io_event = args[2]; 
+			ssize_t written = 0; 
+			for (int i = 0; i < io_event; i++){
+				written += do_fs_alloc_w(cur_fd, iov[i].iov_base, iov[i].iov_len); 
+			}
+			SET_RETURN_VAL(written); 
 		}
 	}
 
@@ -1496,7 +1687,6 @@ hook(long syscall_number,
 			syscall_no_intercept(SYS_write, log_fd, buffer, buffer_offset);
 		}
 	}
-
 	int handled = fsp_syscall_handle(syscall_number,  args, result);
 	if (!handled) {
 		*result = syscall_no_intercept(syscall_number,
@@ -1525,7 +1715,6 @@ hook(long syscall_number,
     }
 
 	// print_syscall(desc, syscall_number, args, *result);
-
 	return 0;
 }
 
@@ -1551,7 +1740,7 @@ start(void)
 		syscall_no_intercept(SYS_exit_group, 3);
 
 	log_fd = (int)syscall_no_intercept(SYS_open,
-			path, O_CREAT | O_TRUNC | O_RDWR, (mode_t)0777);
+			path, O_CREAT | O_APPEND | O_RDWR, (mode_t)0777);
 
 	if (log_fd < 0)
 		syscall_no_intercept(SYS_exit_group, 4);
