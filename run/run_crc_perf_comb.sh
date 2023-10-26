@@ -8,10 +8,12 @@ CUR_DIR=$(pwd)
 
 # Array of combinations and corresponding names
 declare -A combinations=(
-    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF"]="Baseline"
-    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=OFF"]="Crc"
-    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON"]="OpLog"
-    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=ON"]="Full"
+    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=OFF"]="Baseline"
+    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=OFF"]="Crc"
+    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLog"
+    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLogCrc"
+    ["-DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=ON"]="UndoLog"
+    ["-DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=ON"]="UndoLogCrc"
 )
 
 # Loop through the combinations and run the script
