@@ -29,6 +29,7 @@ for flags in "${!combinations[@]}"; do
     cd build
     cmake $flags -DCMAKE_BUILD_TYPE=Release -DCFS_DISK_LAYOUT_LEVELDB=ON -DBUILD_TESTS=OFF ../
     make -j20
+    sleep 10
     cd $CUR_DIR
     # Run the script with the combination name and the combination name with "BK" appended
     bash ./run_crc_perf.sh "${combinations[$flags]}" && bash ./run_crc_perf.sh "${combinations[$flags]}BK"

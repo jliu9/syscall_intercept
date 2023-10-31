@@ -16,6 +16,8 @@ for fname in sys.argv[1:]:
                 items = line.split(' ')
                 time_list.append(int(items[1]))
                 break
+if (len(time_list) != num_file):
+    print(f'{len(time_list)} {num_file}')
 assert(len(time_list) == num_file)
 cur_avg = compute_avg(time_list)
 print(f'avg: {cur_avg}')

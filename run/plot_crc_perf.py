@@ -46,6 +46,8 @@ for case_name in combinations:
         times.append(parse_timing_file(file_path))
     stats[case_name] = compute_stats(times)
 
+print(stats)
+
 # Absolute values plot
 fig, ax = plt.subplots(figsize=(10, 6))
 labels, means, stddevs = zip(*[(k, *v) for k, v in stats.items()])
@@ -72,7 +74,7 @@ ax.set_ylabel('Normalized Time')
 
 # Adding labels to each bar
 for bar, value in zip(bars, normalized_means):
-    ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.2f}",
+    ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.4f}",
             ha='center', va='bottom', fontsize=8)
 
 ax.set_title('Normalized Times to Baseline')
