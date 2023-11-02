@@ -14,7 +14,7 @@ mkdir -p $DIR
 ARGS=""
 
 IS_FAULT=0
-for ITER in {1..10}
+for ITER in {1..15}
 do
     sudo rm -rf /dev/shm/*
     sleep 10
