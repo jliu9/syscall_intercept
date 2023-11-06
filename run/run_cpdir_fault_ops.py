@@ -11,11 +11,12 @@ CFS_ROOT_DIR = os.environ['CFS_ROOT_DIR']
 MKFS_SPDK_BIN = os.environ['MKFS_SPDK_BIN']
 CFS_MAIN_BIN_NAME = os.environ['CFS_MAIN_BIN_NAME']
 
-assert (len(sys.argv) == 5)
+assert (len(sys.argv) == 6)
 log_type = sys.argv[1]
 output_dir = sys.argv[2]
 is_exec = int(sys.argv[3])
 bg_sync_no = int(sys.argv[4])
+is_no_reply = int(sys.argv[5])
 try:
     os.mkdir(output_dir)
 except:
@@ -120,6 +121,7 @@ def prepare_dir():
     checkpoint_journal()
 
 timer_out = open(f"{output_dir}/timer.out", "w")
+prepare_dir()
 for op_num in range(499, 48001, 499):
     # Do mkfs
     # mkfs()
@@ -151,10 +153,13 @@ for op_num in range(499, 48001, 499):
     else:
         recover_flag = ''
     os.environ['FSP_SYNCALL_SEQ_NO'] = f'{bg_sync_no}'
+    reply_flag = ''
+    if is_no_reply:
+        reply_flag = '--no_reply'
 
     # Run trace
     with open(f"{output_dir}/fault_op_num-{op_num}-0.out", "w") as fsp_out:
-        fs_proc = start_fsp(f"--fault_op_num {op_num} {recover_flag} {checkpoint_flag}", fsp_out)
+        fs_proc = start_fsp(f"--fault_op_num {op_num} {recover_flag} {checkpoint_flag} {reply_flag}", fsp_out)
 
     start_time = time.perf_counter_ns()
     os.environ["SYSCALL_LOG_PATH"] = f"{output_dir}/fault_op_num-{op_num}-app.timer"
