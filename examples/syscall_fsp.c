@@ -1393,6 +1393,21 @@ static bool fsp_syscall_handle(long syscall_number,
 #undef DO_FS_ALLOC_R
 #undef DO_FS_ALLOC_W
 
+    if (syscall_number == SYS_fsync) {
+            if (is_fsp_fd(cur_fd)) {
+                int ret = fs_fsync(cur_fd);
+                SET_RETURN_VAL(ret);
+        }
+    }
+
+    if (syscall_number == SYS_fdatasync) {
+            if (is_fsp_fd(cur_fd)) {
+                int ret = fs_fsync(cur_fd);
+                SET_RETURN_VAL(ret);
+        }
+    }
+
+
 	if (syscall_number == SYS_close) {
 		if (is_fsp_fd(cur_fd)) {
 #ifdef RUN_GNU_SORT
