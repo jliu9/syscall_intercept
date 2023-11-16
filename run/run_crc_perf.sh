@@ -13,6 +13,16 @@ mkdir -p $DIR
 
 ARGS=""
 
+CONFIG_NAME="$DIR/$case_name.config"
+
+echo "CFS_FT_LIB_MEM_SIZE_KB:$CFS_FT_LIB_MEM_SIZE_KB" >> "${CONFIG_NAME}"
+echo "=======" >> "${CONFIG_NAME}"
+git log -1 >>"${CONFIG_NAME}"
+echo "=======" >> "${CONFIG_NAME}"
+TS_STR="$(date +%m_%d_%H-%M-%S)"
+git diff >"$DIR/${case_name}.${TS_STR}.diff"
+
+
 IS_FAULT=0
 for ITER in {1..15}
 do
