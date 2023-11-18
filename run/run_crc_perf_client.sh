@@ -33,7 +33,7 @@ for flags in "${!combinations[@]}"; do
     make -j20
     sleep 10
     cd $CUR_DIR
-    for MEM_LIMIT_KB in "-1" "4096" "8192" "16384"
+    for MEM_LIMIT_KB in "-1" "1024" "4096" "8192" "16384"
     do
         export CFS_FT_LIB_MEM_SIZE_KB=$MEM_LIMIT_KB
         echo "$CFS_FT_LIB_MEM_SIZE_KB"

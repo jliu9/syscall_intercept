@@ -29,7 +29,7 @@ for flags in "${!combinations[@]}"; do
     mkdir -p build
     rm -rf ~/.cache
     cd build
-    cmake $flags -DCMAKE_BUILD_TYPE=Release -DCFS_DISK_LAYOUT_LEVELDB=ON -DBUILD_TESTS=OFF ../
+    cmake $flags -DCMAKE_BUILD_TYPE=Release -DCFS_DISK_LAYOUT_LEVELDB=ON -DBUILD_TESTS=ON ../
     make -j20
     sleep 10
     cd $CUR_DIR
