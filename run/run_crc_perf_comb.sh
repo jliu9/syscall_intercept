@@ -24,6 +24,7 @@ declare -A combinations=(
 for flags in "${!combinations[@]}"; do
     cd $WORKSPACE_DIR
     echo $flags
+    git checkout ec-study
     rm -rf build
     mkdir -p build
     rm -rf ~/.cache

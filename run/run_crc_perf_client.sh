@@ -25,13 +25,13 @@ for flags in "${!combinations[@]}"; do
     cd $WORKSPACE_DIR
     git checkout ec-client
     echo $flags
-    #rm -rf build
-    #mkdir -p build
-    #rm -rf ~/.cache
-    #cd build
-    #cmake $flags -DCMAKE_BUILD_TYPE=Release -DCFS_DISK_LAYOUT_LEVELDB=ON -DBUILD_TESTS=ON ../
-    #make -j20
-    #sleep 10
+    rm -rf build
+    mkdir -p build
+    rm -rf ~/.cache
+    cd build
+    cmake $flags -DCMAKE_BUILD_TYPE=Release -DCFS_DISK_LAYOUT_LEVELDB=ON -DBUILD_TESTS=ON ../
+    make -j20
+    sleep 10
     cd $CUR_DIR
     for MEM_LIMIT_KB in "-1" "4096" "8192" "16384"
     do
