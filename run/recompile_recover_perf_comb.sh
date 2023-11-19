@@ -21,6 +21,7 @@ fi
 
 cd $WORKSPACE_DIR
 echo "Using flags: $FLAGS"
+git checkout ec-study
 rm -rf build
 mkdir -p build
 rm -rf ~/.cache
