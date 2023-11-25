@@ -7,10 +7,10 @@ CUR_DIR=$(pwd)
 
 # Array of combinations and corresponding names
 declare -A combinations=(
-    ["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=OFF"]="Baseline"
+    ["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=OFF"]="FullSync"
     #["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=OFF"]="Crc"
-    ["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLog"
-    ["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=ON -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLogSelfCrc"
+    #["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLog"
+    #["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=ON -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLogSelfCrc"
     #["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLogDSCrc"
     #["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=ON -DDO_UFS_FT_CRC=ON -DDO_UFS_FT_OPLOG=ON -DENABLE_UFS_FT=OFF"]="OpLogDSCrcSelfCrc"
     #["-DDO_UNDOLOG_CRC=OFF -DDO_OPLOG_CRC=OFF -DDO_UFS_FT_CRC=OFF -DDO_UFS_FT_OPLOG=OFF -DENABLE_UFS_FT=ON"]="UndoLog"
@@ -23,9 +23,8 @@ declare -A combinations=(
 # Loop through the combinations and run the script
 for flags in "${!combinations[@]}"; do
     cd $WORKSPACE_DIR
+    git checkout ec-fullsync
     echo $flags
-    #git checkout ec-study
-    #git checkout ec-mem-use
     rm -rf build
     mkdir -p build
     rm -rf ~/.cache
@@ -34,6 +33,7 @@ for flags in "${!combinations[@]}"; do
     make -j20
     sleep 10
     cd $CUR_DIR
-    # Run the script with the combination name and the combination name with "BK" appended
-    bash ./run_crc_perf.sh "${combinations[$flags]}" #&& bash ./run_crc_perf.sh "${combinations[$flags]}BK"
+    case_name="${combinations[$flags]}"
+    echo $case_name
+    bash ./run_crc_perf.sh "${case_name}" && bash ./run_crc_perf.sh "${case_name}BK"
 done

@@ -14,7 +14,9 @@ CFS_MAIN_BIN_NAME = os.environ['CFS_MAIN_BIN_NAME']
 assert (len(sys.argv) == 4)
 output_dir = sys.argv[1]
 output_file = sys.argv[2]
-is_fault = int(sys.argv[3])
+#is_fault = int(sys.argv[3])
+gc_num_slot = int(sys.argv[3])
+is_fault = False
 try:
     os.mkdir(output_dir)
 except:
@@ -131,7 +133,10 @@ def start_leveldb(trace_path, num_app, num_worker, log_dir):
 mkfs()
 # Run trace
 with open(f"{output_dir}/{output_file}.fsp", "w") as fsp_out:
-    fs_proc = start_fsp("--gc_num_slot 32768", fsp_out)
+    cur_flag = f"--gc_num_slot {gc_num_slot}"
+    if gc_num_slot <= 0:
+        cur_flag = ""
+    fs_proc = start_fsp(cur_flag , fsp_out)
 
 os.environ["SYSCALL_LOG_PATH"] = f"{output_dir}/{output_file}-app.0.timer"
 os.environ["FSP_SYNCALL_SEQ_NO"] = "19408";

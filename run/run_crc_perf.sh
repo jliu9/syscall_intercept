@@ -22,6 +22,7 @@ echo "=======" >> "${CONFIG_NAME}"
 TS_STR="$(date +%m_%d_%H-%M-%S)"
 git diff >"$DIR/${case_name}.${TS_STR}.diff"
 
+sudo rm -rf /tmp/fsMainOpts*
 
 IS_FAULT=0
 for ITER in {1..15}

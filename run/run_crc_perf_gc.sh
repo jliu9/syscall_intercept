@@ -24,7 +24,7 @@ git diff >"$DIR/${case_name}.${TS_STR}.diff"
 
 
 #IS_FAULT=0
-for NUM_SLOT_GC in "16384" "32768" "65536" "0"
+for NUM_SLOT_GC in "32768" "0" # "16384" "65536" "0"
 do
     cur_case_name="${case_name}_GC${NUM_SLOT_GC}NumSlot"
     ARGS=""

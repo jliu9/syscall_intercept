@@ -131,10 +131,9 @@ def start_leveldb(trace_path, num_app, num_worker, log_dir):
 mkfs()
 # Run trace
 with open(f"{output_dir}/{output_file}.fsp", "w") as fsp_out:
-    fs_proc = start_fsp("--gc_num_slot 32768", fsp_out)
+    fs_proc = start_fsp("fault_op_num 30000" if is_fault == 1 else "", fsp_out)
 
 os.environ["SYSCALL_LOG_PATH"] = f"{output_dir}/{output_file}-app.0.timer"
-os.environ["FSP_SYNCALL_SEQ_NO"] = "19408";
 with open(f"{output_dir}/{output_file}.0.app", "w") as app_out:
     # p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r FSPs FSPd", shell=True, stdout=app_out, stderr=app_out)
     #p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r FSPs FSPd", shell=True, stdout=app_out, stderr=app_out)
@@ -143,7 +142,6 @@ with open(f"{output_dir}/{output_file}.0.app", "w") as app_out:
 p.wait()
 
 time.sleep(10)
-os.environ["FSP_SYNCALL_SEQ_NO"] = "0";
 os.environ["SYSCALL_LOG_PATH"] = f"{output_dir}/{output_file}-app.timer"
 with open(f"{output_dir}/{output_file}.app", "w") as app_out:
     # p = subprocess.Popen("LD_PRELOAD=../build/examples/libsyscall_fsp.so cp -r FSPs FSPd", shell=True, stdout=app_out, stderr=app_out)
