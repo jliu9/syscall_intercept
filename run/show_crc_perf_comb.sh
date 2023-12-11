@@ -30,7 +30,8 @@ for file in "$dir_name"/*[^BK].avg; do
         cat "$dir_name/$base_file"
         cat "$dir_name/$bk_file"
     else
-        echo "BK file for $base_file not found in $dir_name."
+        cat "$dir_name/$base_file"
+        #echo "BK file for $base_file not found in $dir_name."
     fi
 done
 
