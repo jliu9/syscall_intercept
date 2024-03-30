@@ -23,7 +23,7 @@ declare -A combinations=(
 # Loop through the combinations and run the script
 for flags in "${!combinations[@]}"; do
     cd $WORKSPACE_DIR
-    git checkout ec-fullsync
+    git checkout ec-syncall
     echo $flags
     rm -rf build
     mkdir -p build
