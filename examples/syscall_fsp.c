@@ -1339,6 +1339,13 @@ static bool fsp_syscall_handle(long syscall_number,
 		SET_RETURN_VAL(truncate_length);
 	}
 
+	if (syscall_number == SYS_lseek) {
+		if (is_fsp_fd(cur_fd)) {
+			int ret = fs_lseek(cur_fd, args[1], args[2]);
+			SET_RETURN_VAL(ret);
+		}
+	}
+
 #define DO_FS_ALLOC_R \
 	size_t count = args[2]; \
 	void *cur_buf = fs_malloc(count); \
@@ -1349,12 +1356,16 @@ static bool fsp_syscall_handle(long syscall_number,
 	} \
 	fs_free(cur_buf);
 
-	if (syscall_number == SYS_lseek) {
-		if (is_fsp_fd(cur_fd)) {
-			int ret = fs_lseek(cur_fd, args[1], args[2]);
-			SET_RETURN_VAL(ret);
-		}
-	}
+#define DO_FS_ALLOC_PR \
+	size_t count = args[2]; \
+	void *cur_buf = fs_malloc(count); \
+	assert (cur_buf != NULL); \
+	ssize_t ret = fs_allocated_pread(cur_fd, cur_buf, count, offset); \
+	if (ret >= 0) { \
+		memcpy((void*)args[1], cur_buf, ret); \
+	} \
+	fs_free(cur_buf);
+
 
 #define DO_FS_ALLOC_W \
 	size_t count = args[2]; \
@@ -1374,6 +1385,19 @@ static bool fsp_syscall_handle(long syscall_number,
 			SET_RETURN_VAL(ret);
 		}
 	}
+
+	if (syscall_number == SYS_pread64) {
+		if (is_fsp_fd(cur_fd)) {
+			off_t offset = args[3];
+			DO_FS_ALLOC_PR
+			if (ret <= 0) {
+				// fprintf(stderr, "alloc_pread fd%d ret:%ld errno:%d\n", cur_fd, ret, errno);
+				// errno = -ret;
+			}
+			SET_RETURN_VAL(ret);
+		}
+	}
+
 	if (syscall_number == SYS_write) {
 #ifdef RUN_GNU_SORT
 		if (check_if_fsp_sort_outfd_dup_target(cur_fd)) {
@@ -1391,6 +1415,7 @@ static bool fsp_syscall_handle(long syscall_number,
 	}
 
 #undef DO_FS_ALLOC_R
+#undef DO_FS_ALLOC_PR
 #undef DO_FS_ALLOC_W
 
     if (syscall_number == SYS_fsync) {
